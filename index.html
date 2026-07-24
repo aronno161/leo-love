@@ -178,46 +178,36 @@ function stopAmbient() {
 const bgSong = document.getElementById('bgSong');
 bgSong.volume = 0.45;
 
-soundBtn.addEventListener('click', () => {
+function setSoundState(enabled) {
   initAudio();
   if (audioCtx.state === 'suspended') audioCtx.resume();
-  soundEnabled = !soundEnabled;
+  soundEnabled = enabled;
   soundBtn.textContent = soundEnabled ? '🔇 Mute Sound' : '🔊 Enable Sound';
   if (soundEnabled) {
-    bgSong.currentTime = 0;
     bgSong.play().catch(err => console.log('Song play blocked:', err));
   } else {
     bgSong.pause();
-    stopAmbient();
   }
-});
-
-// ---------- Try autoplay immediately; fall back to first click anywhere ----------
-function enableSoundNow() {
-  if (soundEnabled) return;
-  initAudio();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  soundEnabled = true;
-  soundBtn.textContent = '🔇 Mute Sound';
-  bgSong.play().catch(err => console.log('Song play blocked:', err));
 }
 
-// Attempt autoplay right away (works in some browsers/contexts)
+soundBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setSoundState(!soundEnabled);
+});
+
+// Tap anywhere else on the page (outside the button) enables sound if it isn't already on
+document.addEventListener('click', (e) => {
+  if (e.target === soundBtn) return;
+  if (!soundEnabled) setSoundState(true);
+});
+
+// Try autoplay right on load (works in some browsers/contexts without any tap)
 window.addEventListener('load', () => {
   bgSong.play().then(() => {
     soundEnabled = true;
     soundBtn.textContent = '🔇 Mute Sound';
   }).catch(() => {
-    // Autoplay blocked — wait for the very first user interaction anywhere on the page
-    const onFirstInteract = () => {
-      enableSoundNow();
-      document.removeEventListener('click', onFirstInteract);
-      document.removeEventListener('touchstart', onFirstInteract);
-      document.removeEventListener('keydown', onFirstInteract);
-    };
-    document.addEventListener('click', onFirstInteract);
-    document.addEventListener('touchstart', onFirstInteract);
-    document.addEventListener('keydown', onFirstInteract);
+    // Autoplay blocked — will enable on first tap via the listeners above
   });
 });
 
@@ -422,11 +412,11 @@ function frame(now) {
 
 requestAnimationFrame(frame);
 
-replayBtn.addEventListener('click', () => {
+replayBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
   startTime = null;
   textOpacity = 0;
   currentPhase = null;
-  stopAmbient();
   if (soundEnabled) {
     bgSong.currentTime = 0;
     bgSong.play().catch(err => console.log('Song play blocked:', err));
